@@ -55,7 +55,7 @@ METRICS = [
     {'name': 'locked', 'description': 'Locked Cryptocurrency Saving', 'type': 'gauge'}
 ]
 
-REGISTRY Configuration
+# REGISTRY Configuration
 REGISTRY.unregister(PROCESS_COLLECTOR)
 REGISTRY.unregister(PLATFORM_COLLECTOR)
 REGISTRY.unregister(REGISTRY._names_to_collectors['python_gc_objects_collected_total'])
