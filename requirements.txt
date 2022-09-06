@@ -1,0 +1,2 @@
+binance-connector
+prometheus_client
