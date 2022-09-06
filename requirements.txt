@@ -1,5 +1,7 @@
 binance-connector
-charset-normalizer
+certifi
+chardet
+idna
 prometheus_client
 requests
 urllib3
