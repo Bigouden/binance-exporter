@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 import time
-from collections import defaultdict
 from binance.spot import Spot
 from binance.error import ClientError
 from prometheus_client.core import REGISTRY, Metric
@@ -55,7 +54,7 @@ METRICS = [
     {'name': 'locked', 'description': 'Locked Cryptocurrency Saving', 'type': 'gauge'}
 ]
 
-REGISTRY Configuration
+# REGISTRY Configuration
 REGISTRY.unregister(PROCESS_COLLECTOR)
 REGISTRY.unregister(PLATFORM_COLLECTOR)
 REGISTRY.unregister(REGISTRY._names_to_collectors['python_gc_objects_collected_total'])
@@ -92,7 +91,9 @@ class BinanceCollector():
         metrics = self.get_balances()
         for metric in metrics:
             prometheus_metric = Metric(metric['name'], metric['description'], metric['type'])
-            prometheus_metric.add_sample(metric['name'], value=metric['value'], labels=metric['labels'])
+            prometheus_metric.add_sample(metric['name'],
+                                         value=metric['value'],
+                                         labels=metric['labels'])
             yield prometheus_metric
 
 def main():
@@ -101,7 +102,7 @@ def main():
     logging.debug("BINANCE_EXPORTER_PORT: %s.", BINANCE_EXPORTER_PORT)
     logging.debug("BINANCE_EXPORTER_NAME: %s.", BINANCE_EXPORTER_NAME)
     # Start Prometheus HTTP Server
-    start_http_server(SPEEDTEST_EXPORTER_PORT)
+    start_http_server(BINANCE_EXPORTER_PORT)
     # Init BinanceCollector
     REGISTRY.register(BinanceCollector())
     # Loop Infinity
