@@ -1,2 +1,3 @@
 binance-connector
 prometheus_client
+requests
