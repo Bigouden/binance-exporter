@@ -1,2 +1,7 @@
 binance-connector
+certifi
+chardet
+idna
 prometheus_client
+requests
+urllib3

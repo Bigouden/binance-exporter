@@ -50,8 +50,8 @@ except ValueError:
     sys.exit(1)
 
 METRICS = [
-    {'name': 'free', 'description': 'Free Cryptocurrency Saving', 'type': 'gauge'},
-    {'name': 'locked', 'description': 'Locked Cryptocurrency Saving', 'type': 'gauge'}
+    {'name': 'free', 'description': 'Flexible Cryptocurrency Asset', 'type': 'gauge'},
+    {'name': 'locked', 'description': 'Locked Cryptocurrency Asset', 'type': 'gauge'}
 ]
 
 # REGISTRY Configuration
@@ -73,7 +73,7 @@ class BinanceCollector():
                 for key in [i['name'] for i in METRICS]:
                     description = [i['description'] for i in METRICS if key == i['name']][0]
                     metric_type = [i['type'] for i in METRICS if key == i['name']][0]
-                    res.append({'name': f'binance_balance_{key.lower()}',
+                    res.append({'name': f'binance_asset_{key.lower()}',
                                 'value': float(balance[key]),
                                 'description': description,
                                 'type': metric_type,
