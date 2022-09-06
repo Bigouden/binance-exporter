@@ -17,7 +17,7 @@ RUN apk add --no-cache --update \
         /tmp/* \
         /var/cache/* \
     && chmod +x /entrypoint.sh
-COPY speedtest_exporter.py ${VIRTUAL_ENV}
+COPY binance_exporter.py ${VIRTUAL_ENV}
 WORKDIR ${VIRTUAL_ENV}
 HEALTHCHECK CMD nc -vz localhost ${BINANCE_EXPORTER_PORT} || exit 1
 ENTRYPOINT ["/entrypoint.sh"]
