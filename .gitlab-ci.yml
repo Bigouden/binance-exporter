@@ -1,6 +1,11 @@
 include:
   - project: 'Bigouden/gitlab-ci-templates'
     file: '.gitlab-ci-docker.yml'
+  - project: 'Bigouden/gitlab-ci-templates'
+    file: '.gitlab-ci-prometheus.yml'
+    variables:
+      BINANCE_KEY: $BINANCE_KEY
+      BINANCE_SECRET: $BINANCE_SECRET
 
 variables:
   CONTAINER_CLIENT_IMAGE: alpine:latest
