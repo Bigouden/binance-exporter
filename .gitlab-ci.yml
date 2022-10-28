@@ -14,6 +14,7 @@ stages:
   - Quality
   - Security
   - Build
+  - Test
   - Inspect
   - Release
   - Clean
