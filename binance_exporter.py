@@ -5,10 +5,13 @@
 
 import logging
 import os
+import hmac
+import hashlib
+import json
 import sys
 import time
-from binance.spot import Spot
-from binance.error import ClientError
+from urllib.parse import urlencode
+import requests
 from prometheus_client.core import REGISTRY, Metric
 from prometheus_client import start_http_server, PROCESS_COLLECTOR, PLATFORM_COLLECTOR
 
@@ -36,11 +39,12 @@ except ValueError:
 # Check Mandatory Environment Variable
 for var in MANDATORY_ENV_VARS:
     if var not in os.environ:
-        logging.error("%s environement variable must be set !", var)
+        logging.critical("%s environement variable must be set !", var)
         sys.exit(1)
 
 BINANCE_KEY = os.environ.get('BINANCE_KEY')
 BINANCE_SECRET = os.environ.get('BINANCE_SECRET')
+BINANCE_API_ENDPOINT = "https://api.binance.com"
 
 # Check BINANCE_EXPORTER_PORT
 try:
@@ -50,8 +54,24 @@ except ValueError:
     sys.exit(1)
 
 METRICS = [
-    {'name': 'free', 'description': 'Flexible Cryptocurrency Asset', 'type': 'gauge'},
-    {'name': 'locked', 'description': 'Locked Cryptocurrency Asset', 'type': 'gauge'}
+    {'name': 'earn_wallet',
+     'description': 'Binance Earn Wallet',
+     'type': 'gauge',
+     'key': 'totalAmount',
+     'method': 'GET',
+     'uri': '/sapi/v1/lending/daily/token/position'},
+    {'name': 'funding_wallet',
+     'description': 'Binance Funding Wallet',
+     'type': 'gauge',
+     'key': 'free',
+     'method': 'POST',
+     'uri': '/sapi/v1/asset/get-funding-asset'},
+    {'name': 'spot_wallet',
+     'description': 'Binance Spot Wallet',
+     'type': 'gauge',
+     'key': 'free',
+     'method': 'POST',
+     'uri': '/sapi/v3/asset/getUserAsset'}
 ]
 
 # REGISTRY Configuration
@@ -62,33 +82,61 @@ REGISTRY.unregister(REGISTRY._names_to_collectors['python_gc_objects_collected_t
 class BinanceCollector():
     '''Binance Collector Class'''
     def __init__(self):
-        self.client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
+        pass
 
-    def get_balances(self):
-        '''Get Binance Balances Account'''
-        res = []
-        try:
-            balances = self.client.account()['balances']
-            for balance in balances:
-                for key in [i['name'] for i in METRICS]:
-                    description = [i['description'] for i in METRICS if key == i['name']][0]
-                    metric_type = [i['type'] for i in METRICS if key == i['name']][0]
-                    res.append({'name': f'binance_asset_{key.lower()}',
-                                'value': float(balance[key]),
-                                'description': description,
-                                'type': metric_type,
-                                'labels': {'job': BINANCE_EXPORTER_NAME,
-                                           'cryptocurrency': balance['asset']
-                                          }
-                                   })
-            return res
-        except ClientError as exception:
-            logging.error("%s", exception.error_message)
+    @staticmethod
+    def _timestamp():
+        '''Get Binance Timestamp'''
+        return json.loads(requests.get(f"{BINANCE_API_ENDPOINT}/api/v3/time").text)['serverTime']
+
+    @staticmethod
+    def _signature(data):
+        '''Generate Binance Signature'''
+        return hmac.new(BINANCE_SECRET.encode('utf-8'),
+                        urlencode(data).encode('utf-8'),
+                        hashlib.sha256).hexdigest()
+
+    def api_call(self, method, uri):
+        '''Do Binance API Call'''
+        headers = {"X-MBX-APIKEY": BINANCE_KEY}
+        timestamp = self._timestamp()
+        data = {'timestamp': timestamp}
+        signature = self._signature(data)
+        data['signature'] = signature
+        if method == 'GET':
+            res = requests.get(f"{BINANCE_API_ENDPOINT}{uri}", headers=headers, params=data)
+        elif method == 'POST':
+            res = requests.post(f"{BINANCE_API_ENDPOINT}{uri}", headers=headers, params=data)
+        else:
+            logging.critical("Invalid HTTP Method !")
             sys.exit(1)
+        if res.status_code != 200:
+            logging.critical(res.text)
+            sys.exit(1)
+        return res.text
+
+    def get_wallets(self):
+        '''Get Binance Wallets'''
+        res = []
+        for metric in METRICS:
+            wallet = json.loads(self.api_call(metric['method'], metric['uri']))
+            for item in wallet:
+                description = metric['description']
+                metric_type = metric['type']
+                res.append({'name': f"binance_{metric['name'].lower()}",
+                            'value': float(item[metric['key']]),
+                            'description': description,
+                            'type': metric_type,
+                            'labels': {'job': BINANCE_EXPORTER_NAME,
+                                       'asset': item['asset']
+                                      }
+                           })
+        logging.info(res)
+        return res
 
     def collect(self):
         '''Collect Prometheus Metrics'''
-        metrics = self.get_balances()
+        metrics = self.get_wallets()
         for metric in metrics:
             prometheus_metric = Metric(metric['name'], metric['description'], metric['type'])
             prometheus_metric.add_sample(metric['name'],
