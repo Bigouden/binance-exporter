@@ -144,9 +144,9 @@ class BinanceCollector():
         res = []
         for metric in METRICS:
             wallet = json.loads(self.api_call(metric['method'], metric['uri'], metric['params']))
-            labels = metric['labels']
             for item in wallet:
-                labels |= {'job': BINANCE_EXPORTER_NAME, 'asset': item['asset']}
+                labels = {'job': BINANCE_EXPORTER_NAME, 'asset': item['asset']}
+                labels |= metric['labels']
                 description = metric['description']
                 metric_type = metric['type']
                 res.append({'name': f"binance_{metric['name'].lower()}",
