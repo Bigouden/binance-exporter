@@ -59,18 +59,40 @@ METRICS = [
      'type': 'gauge',
      'key': 'totalAmount',
      'method': 'GET',
+     'params': {},
+     'labels': {'type': 'flexible'},
+     'uri': '/sapi/v1/lending/daily/token/position'},
+    {'name': 'earn_wallet',
+     'description': 'Binance Earn Wallet',
+     'type': 'gauge',
+     'key': 'amount',
+     'method': 'GET',
+     'params': {'product': 'STAKING'},
+     'labels': {'type': 'locked'},
+     'uri': '/sapi/v1/staking/position'},
+    {'name': 'earn_wallet',
+     'description': 'Binance Earn Wallet',
+     'type': 'gauge',
+     'key': 'totalAmount',
+     'method': 'GET',
+     'params': {},
+     'labels': {},
      'uri': '/sapi/v1/lending/daily/token/position'},
     {'name': 'funding_wallet',
      'description': 'Binance Funding Wallet',
      'type': 'gauge',
      'key': 'free',
      'method': 'POST',
+     'params': {},
+     'labels': {},
      'uri': '/sapi/v1/asset/get-funding-asset'},
     {'name': 'spot_wallet',
      'description': 'Binance Spot Wallet',
      'type': 'gauge',
      'key': 'free',
      'method': 'POST',
+     'params': {},
+     'labels': {},
      'uri': '/sapi/v3/asset/getUserAsset'}
 ]
 
@@ -96,11 +118,12 @@ class BinanceCollector():
                         urlencode(data).encode('utf-8'),
                         hashlib.sha256).hexdigest()
 
-    def api_call(self, method, uri):
+    def api_call(self, method, uri, params):
         '''Do Binance API Call'''
         headers = {"X-MBX-APIKEY": BINANCE_KEY}
         timestamp = self._timestamp()
         data = {'timestamp': timestamp}
+        data |= params
         signature = self._signature(data)
         data['signature'] = signature
         if method == 'GET':
@@ -113,23 +136,24 @@ class BinanceCollector():
         if res.status_code != 200:
             logging.critical(res.text)
             sys.exit(1)
+        logging.debug(res.text)
         return res.text
 
     def get_wallets(self):
         '''Get Binance Wallets'''
         res = []
         for metric in METRICS:
-            wallet = json.loads(self.api_call(metric['method'], metric['uri']))
+            wallet = json.loads(self.api_call(metric['method'], metric['uri'], metric['params']))
+            labels = metric['labels']
             for item in wallet:
+                labels |= {'job': BINANCE_EXPORTER_NAME, 'asset': item['asset']}
                 description = metric['description']
                 metric_type = metric['type']
                 res.append({'name': f"binance_{metric['name'].lower()}",
                             'value': float(item[metric['key']]),
                             'description': description,
                             'type': metric_type,
-                            'labels': {'job': BINANCE_EXPORTER_NAME,
-                                       'asset': item['asset']
-                                      }
+                            'labels': labels
                            })
         logging.info(res)
         return res
