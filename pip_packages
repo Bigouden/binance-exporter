@@ -3,5 +3,6 @@ certifi
 chardet
 idna
 prometheus_client
+pytz
 requests
 urllib3
