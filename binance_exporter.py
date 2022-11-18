@@ -10,7 +10,9 @@ import hashlib
 import json
 import sys
 import time
+from datetime import datetime
 from urllib.parse import urlencode
+import pytz
 import requests
 from prometheus_client.core import REGISTRY, Metric
 from prometheus_client import start_http_server, PROCESS_COLLECTOR, PLATFORM_COLLECTOR
@@ -19,28 +21,41 @@ BINANCE_EXPORTER_NAME = os.environ.get('BINANCE_EXPORTER_NAME',
                                        'binance-exporter')
 BINANCE_EXPORTER_LOGLEVEL = os.environ.get('BINANCE_EXPORTER_LOGLEVEL',
                                            'INFO').upper()
+BINANCE_EXPORTER_TZ = os.environ.get('TZ', 'Europe/Paris')
 
 MANDATORY_ENV_VARS = ["BINANCE_KEY", "BINANCE_SECRET"]
 
 # Logging Configuration
 try:
+    pytz.timezone(BINANCE_EXPORTER_TZ)
+    logging.Formatter.converter = lambda *args: \
+                                  datetime.now(tz=pytz.timezone(BINANCE_EXPORTER_TZ)).timetuple()
     logging.basicConfig(stream=sys.stdout,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         datefmt='%d/%m/%Y %H:%M:%S',
                         level=BINANCE_EXPORTER_LOGLEVEL)
+except pytz.exceptions.UnknownTimeZoneError:
+    logging.Formatter.converter = lambda *args: \
+                                  datetime.now(tz=pytz.timezone('Europe/Paris')).timetuple()
+    logging.basicConfig(stream=sys.stdout,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        datefmt='%d/%m/%Y %H:%M:%S',
+                        level='INFO')
+    logging.error("TZ invalid : %s !", BINANCE_EXPORTER_TZ)
+    os._exit(1)
 except ValueError:
     logging.basicConfig(stream=sys.stdout,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         datefmt='%d/%m/%Y %H:%M:%S',
                         level='INFO')
     logging.error("BINANCE_EXPORTER_LOGLEVEL invalid !")
-    sys.exit(1)
+    os._exit(1)
 
 # Check Mandatory Environment Variable
 for var in MANDATORY_ENV_VARS:
     if var not in os.environ:
         logging.critical("%s environement variable must be set !", var)
-        sys.exit(1)
+        os._exit(1)
 
 BINANCE_KEY = os.environ.get('BINANCE_KEY')
 BINANCE_SECRET = os.environ.get('BINANCE_SECRET')
@@ -51,7 +66,7 @@ try:
     BINANCE_EXPORTER_PORT = int(os.environ.get('BINANCE_EXPORTER_PORT', '8123'))
 except ValueError:
     logging.error("BINANCE_EXPORTER_PORT must be int !")
-    sys.exit(1)
+    os._exit(1)
 
 METRICS = [
     {'name': 'earn_wallet',
@@ -124,10 +139,10 @@ class BinanceCollector():
             res = requests.post(f"{BINANCE_API_ENDPOINT}{uri}", headers=headers, params=data)
         else:
             logging.critical("Invalid HTTP Method !")
-            sys.exit(1)
+            os._exit(1)
         if res.status_code != 200:
             logging.critical(res.text)
-            sys.exit(1)
+            os._exit(1)
         logging.debug(res.text)
         return res.text
 
@@ -169,7 +184,7 @@ def main():
     start_http_server(BINANCE_EXPORTER_PORT)
     # Init BinanceCollector
     REGISTRY.register(BinanceCollector())
-    # Loop Infinity
+    # Infinite Loop
     while True:
         time.sleep(1)
 
