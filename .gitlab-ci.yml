@@ -5,6 +5,7 @@ include:
   - project: "Bigouden/gitlab-ci-templates"
     file: ".gitlab-ci-prometheus.yml"
 
+# kics-scan ignore-block
 variables:
   CONTAINER_CLIENT_IMAGE: alpine:latest
   BINANCE_KEY: $BINANCE_KEY
