@@ -148,7 +148,7 @@ METRICS = [
         "method": "GET",
         "params": {},
         "labels": {"type": "flexible"},
-        "uri": "/sapi/v1/lending/daily/token/position",
+        "uri": "/sapi/v1/simple-earn/flexible/position",
     },
     {
         "name": "earn_wallet",
@@ -156,9 +156,9 @@ METRICS = [
         "type": "gauge",
         "key": "amount",
         "method": "GET",
-        "params": {"product": "STAKING"},
+        "params": {},
         "labels": {"type": "locked"},
-        "uri": "/sapi/v1/staking/position",
+        "uri": "/sapi/v1/simple-earn/locked/position",
     },
     {
         "name": "funding_wallet",
@@ -230,7 +230,7 @@ class BinanceCollector:
             logging.critical("Invalid HTTP Method !")
             os._exit(1)
         if res.status_code != 200:
-            logging.critical(res.text)
+            logging.critical("%s (uri: %s)", res.text, uri)
             os._exit(1)
         logging.debug(res.text)
         return res.text
@@ -242,6 +242,8 @@ class BinanceCollector:
             wallet = json.loads(
                 self.api_call(metric["method"], metric["uri"], metric["params"])
             )
+            if "simple-earn" in metric["uri"]:
+                wallet = wallet["rows"]
             for item in wallet:
                 labels = {"job": BINANCE_EXPORTER_NAME, "asset": item["asset"]}
                 labels |= metric["labels"]
