@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # pyright: reportMissingImports=false, reportGeneralTypeIssues=false
-# pyright: reportOptionalMemberAccess=false
+# pyright: reportOptionalMemberAccess=false, reportArgumentType=false
 
 """Binance Exporter"""
 
