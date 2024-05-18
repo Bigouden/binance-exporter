@@ -218,6 +218,7 @@ class BinanceCollector:
         data |= params
         signature = self._signature(data)
         data["signature"] = signature
+        res = None
         if method == "GET":
             res = requests.get(
                 f"{BINANCE_API_ENDPOINT}{uri}", headers=headers, params=data, timeout=2
